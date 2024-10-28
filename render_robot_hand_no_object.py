@@ -29,7 +29,6 @@ pi = np.pi
 def render_by_sapien(
     meta_data: Dict,
     data: List[Union[List[float], np.ndarray]],
-    obj_path: str,
     output_video_path: Optional[str] = None,
     headless: Optional[bool] = False,
 ):  
@@ -70,7 +69,7 @@ def render_by_sapien(
 
     # Camera
     cam = scene.add_camera(name="Cheese!", width=600, height=600, fovy=1, near=0.1, far=10)
-    cam.set_local_pose(sapien.Pose([0.12, 0.12, 0.15], euler_to_quaternion([-pi/4,0.0,0.0])))
+    cam.set_local_pose(sapien.Pose([0.2, 0.0, 0.0], [0.0,0.0,0.0,-1.0]))
 
 
     # Viewer
@@ -128,24 +127,8 @@ def render_by_sapien(
     # elif "inspire" in robot_name:
     #     robot.set_pose(sapien.Pose([0, 0, -0.15]))
 
-    # Create object
-
-    with open(obj_path,"rb") as file:
-        obj_data = pickle.load(file)
-        initial_pos = obj_data["center"]
-        half_len = obj_data["half_len"]
-        thetas = obj_data["angles"]
-        local_positions = obj_data["local_positions"]
 
 
-    if (len(data) != len(thetas)):
-        raise ValueError("Hand and object length not match!")
-    initial_theta = 0.0
-    actor_builder = scene.create_actor_builder()
-    actor_builder.add_box_collision(half_size=[half_len,half_len,half_len])
-    actor_builder.add_box_visual(half_size=[half_len,half_len,half_len], material=[1.0, 0.0, 0.0])
-    box = actor_builder.build(name="box")  # Add a box
-    box.set_pose(sapien.Pose(p=initial_pos,q=theta_to_quaternion(initial_theta)))
 
     # Video recorder
     if record_video:
@@ -159,18 +142,16 @@ def render_by_sapien(
     retargeting_joint_names = meta_data["joint_names"]
     retargeting_to_sapien = np.array([retargeting_joint_names.index(name) for name in sapien_joint_names]).astype(int)
     
-    key_link_names = ["thtip", "fftip", "mftip", "rftip", "lftip"]
         
     # data = np.zeros([2500,20])
     # for i in range(20):
     #     data[100*(i+1):100*(i+2)][:,i] = 1.0
     # thetas = np.zeros([2500,4]) 
 
-    for qpos, theta in tqdm.tqdm(zip(data,thetas)):
+    for qpos in tqdm.tqdm(data):
 
         
         robot.set_qpos(np.array(qpos)[retargeting_to_sapien])
-        box.set_pose(sapien.Pose(p=initial_pos,q=theta))
         if not headless:
             for _ in range(2):
                 viewer.render()
@@ -181,13 +162,6 @@ def render_by_sapien(
             rgb = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
             writer.write(rgb[..., ::-1])
 
-
-    # Show acc
-    last_rot = Rotation.from_quat(theta)
-    for link_name, local_pos in zip(key_link_names,local_positions):
-        target_pos = robot.find_link_by_name(link_name).get_entity_pose().get_p()
-        link_pos = last_rot.apply(local_pos) + initial_pos
-        print(f"{link_name}: pos {link_pos} target {target_pos} rel_dist {np.linalg.norm(target_pos-link_pos)/half_len:.2f}")
 
     while not viewer.closed:
         
@@ -211,9 +185,8 @@ def render_by_sapien(
 
 def main(
     pickle_path: str,
-    object_path: str,
     output_video_path: Optional[str] = None,
-    headless: bool = False
+    headless: bool = False,
 ):
     """
     Loads the preserved robot pose data and renders it either on screen or as an mp4 video.
@@ -230,8 +203,7 @@ def main(
     pickle_data = np.load(pickle_path, allow_pickle=True)
     meta_data, data = pickle_data["meta_data"], pickle_data["data"]
 
-
-    render_by_sapien(meta_data, data, object_path, output_video_path, headless)
+    render_by_sapien(meta_data, data, output_video_path, headless)
 
 
 if __name__ == "__main__":

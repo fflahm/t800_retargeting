@@ -10,10 +10,7 @@ from dex_retargeting.retargeting_config import RetargetingConfig
 from dex_retargeting.seq_retarget import SeqRetargeting
 
 
-pre_freq = 1
-post_freq = 1
-
-def retarget_video(retargeting: SeqRetargeting, input_path: str, output_path: str, config_path: str):
+def retarget_video(retargeting: SeqRetargeting, input_path: str, output_path: str, config_path: str, pre_freq=1, post_freq=1):
     data = []
 
     with open(input_path,"rb") as file:
@@ -55,10 +52,11 @@ def retarget_video(retargeting: SeqRetargeting, input_path: str, output_path: st
 
 
 def main(
-    robot_name: RobotName, input_path: str, output_path: str, retargeting_type: RetargetingType, hand_type: HandType
+    robot_name: RobotName, input_path: str, output_path: str, retargeting_type: RetargetingType, 
+    hand_type: HandType, config_tag: str="", pre_freq:int=1, post_freq:int=1
 ):
     """
-    Detects the human hand pose from a video and translates the human pose trajectory into a robot pose trajectory.
+    Translates the human pose trajectory into a robot pose trajectory.
 
     Args:
         robot_name: The identifier for the robot. This should match one of the default supported robots.
@@ -69,12 +67,12 @@ def main(
             Please note that retargeting is specific to the same type of hand: a left robot hand can only be retargeted
             to another left robot hand, and the same applies for the right hand.
     """
-    # input_path = "data/human_hand_joints.pkl"
-    config_path = get_default_config_path(robot_name, retargeting_type, hand_type)
+    
+    config_path = get_default_config_path(robot_name, retargeting_type, hand_type, config_tag)
     robot_dir = "assets/robots/hands"
     RetargetingConfig.set_default_urdf_dir(str(robot_dir))
     retargeting = RetargetingConfig.load_from_file(config_path).build()
-    retarget_video(retargeting, input_path, output_path, str(config_path))
+    retarget_video(retargeting, input_path, output_path, str(config_path),pre_freq,post_freq)
 
 
 if __name__ == "__main__":

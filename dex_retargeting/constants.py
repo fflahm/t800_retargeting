@@ -56,10 +56,12 @@ ROBOT_NAMES = list(ROBOT_NAME_MAP.keys())
 
 
 def get_default_config_path(
-    robot_name: RobotName, retargeting_type: RetargetingType, hand_type: HandType
+    robot_name: RobotName, retargeting_type: RetargetingType, hand_type: HandType, config_tag: str = ""
 ) -> Optional[Path]:
     config_path = Path(__file__).parent / "configs"
-    if retargeting_type is RetargetingType.position:
+    if config_tag != "":
+        config_path = config_path / "t800"
+    elif retargeting_type is RetargetingType.position:
         config_path = config_path / "offline"
     else:
         config_path = config_path / "teleop"
@@ -76,6 +78,7 @@ def get_default_config_path(
             config_name = f"{robot_name_str}_{hand_type_str}_dexpilot.yml"
         else:
             config_name = f"{robot_name_str}_{hand_type_str}.yml"
+    config_name = f"{config_tag}{config_name}"
     return config_path / config_name
 
 
