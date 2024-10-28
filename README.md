@@ -1,5 +1,10 @@
 # t800_retargeting
 
+## install
+```shell
+pip install -r requirements.txt
+```
+
 ## retarget from human hand
 
 ```shell
