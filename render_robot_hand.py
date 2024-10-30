@@ -144,7 +144,7 @@ def render_by_sapien(
     actor_builder = scene.create_actor_builder()
     actor_builder.add_box_collision(half_size=[half_len,half_len,half_len])
     actor_builder.add_box_visual(half_size=[half_len,half_len,half_len], material=[1.0, 0.0, 0.0])
-    box = actor_builder.build(name="box")  # Add a box
+    box = actor_builder.build(name="box")
     box.set_pose(sapien.Pose(p=initial_pos,q=theta_to_quaternion(initial_theta)))
 
     # Video recorder
