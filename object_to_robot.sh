@@ -1,6 +1,6 @@
 name=svh
-object_position_path=data/object_positions.pkl
-object_pose_path=data/object_poses.pkl
+object_position_path=data/t800/object_positions.pkl
+object_pose_path=data/t800/object_poses.pkl
 robot_pose_path=data/${name}_hand_poses.pkl
 
 python generate_object_poses.py \

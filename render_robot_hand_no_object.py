@@ -17,12 +17,6 @@ from scipy.spatial.transform import Rotation
 # Convert webp
 # ffmpeg -i teaser.mp4 -vcodec libwebp -lossless 1 -loop 0 -preset default  -an -vsync 0 teaser.webp
 
-def theta_to_quaternion(theta):
-    return [math.cos(theta/2),math.sin(theta/2),0.0,0.0]
-
-def euler_to_quaternion(rpy):
-    return Rotation.from_euler("xyz",rpy,degrees=False).as_quat()
-
 np.set_printoptions(precision=3)
 pi = np.pi
 

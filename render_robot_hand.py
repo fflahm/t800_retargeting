@@ -17,12 +17,6 @@ from scipy.spatial.transform import Rotation
 # Convert webp
 # ffmpeg -i teaser.mp4 -vcodec libwebp -lossless 1 -loop 0 -preset default  -an -vsync 0 teaser.webp
 
-def theta_to_quaternion(theta):
-    return [math.cos(theta/2),math.sin(theta/2),0.0,0.0]
-
-def euler_to_quaternion(rpy):
-    return Rotation.from_euler("xyz",rpy,degrees=False).as_quat()
-
 def process_rotations(origin_quat):
     origin_rot = Rotation.from_rotvec(origin_quat)
     trans_rot = Rotation.from_quat([0.5,-0.5,-0.5,0.5])
@@ -104,13 +98,13 @@ def render_by_sapien(
     robot = loader.load(filepath)
 
     # Create object
-
+    obj_dir = "assets/objects"
     with open(obj_path,"rb") as file:
         obj_data = pickle.load(file)
-        obj_mesh_path = obj_data["mesh_path"]
+        obj_name = obj_data["name"]
+        obj_mesh_path = f"{obj_dir}/{obj_name}.ply"
         obj_tran_seq = obj_data["tran_seq"] # [N, 3]
         obj_rot_seq = obj_data["rot_seq"] # [N, 4]
-
     if (len(data) != len(obj_tran_seq)):
         raise ValueError("Hand and object length not match!")
     obj_builder = scene.create_actor_builder()
@@ -152,7 +146,6 @@ def render_by_sapien(
 
     # print(glob_tran_seq[i])
     # print(robot.find_link_by_name("right_hand_base_link").get_entity_pose().get_p())
-
 
     while not viewer.closed:
         

@@ -1,7 +1,7 @@
 name="svh"
 python retarget_from_joints.py \
   --robot-name $name \
-  --input-path data/grab/grab_hand_joints.pkl \
+  --input-path data/grab/human_hand_joints.pkl \
   --retargeting-type vector \
   --hand-type right \
   --output-path data/${name}_hand_poses.pkl \

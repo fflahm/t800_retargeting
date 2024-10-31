@@ -5,6 +5,10 @@
 pip install -r requirements.txt
 ```
 
+## process original grab data
+cd manotorch
+python process_grab_data.py
+
 ## retarget from human hand and visualize without object
 
 ```shell
