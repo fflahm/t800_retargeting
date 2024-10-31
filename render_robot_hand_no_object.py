@@ -69,7 +69,7 @@ def render_by_sapien(
 
     # Camera
     cam = scene.add_camera(name="Cheese!", width=600, height=600, fovy=1, near=0.1, far=10)
-    cam.set_local_pose(sapien.Pose([0.2, 0.0, 0.0], [0.0,0.0,0.0,-1.0]))
+    cam.set_local_pose(sapien.Pose([0.2, 0.0, 0.1], [0.0,0.0,0.0,-1.0]))
 
 
     # Viewer
@@ -149,8 +149,6 @@ def render_by_sapien(
     # thetas = np.zeros([2500,4]) 
 
     for qpos in tqdm.tqdm(data):
-
-        
         robot.set_qpos(np.array(qpos)[retargeting_to_sapien])
         if not headless:
             for _ in range(2):

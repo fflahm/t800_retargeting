@@ -23,19 +23,12 @@ def theta_to_quaternion(theta):
 def euler_to_quaternion(rpy):
     return Rotation.from_euler("xyz",rpy,degrees=False).as_quat()
 
-def process_rotations(origin_quat):
-    origin_rot = Rotation.from_rotvec(origin_quat)
-    trans_rot = Rotation.from_quat([0.5,-0.5,-0.5,0.5])
-    target_quat = (origin_rot*trans_rot).as_quat() # [x, y, z, w]
-    return target_quat[[3,0,1,2]]
-
 np.set_printoptions(precision=3)
 pi = np.pi
 
 def render_by_sapien(
     meta_data: Dict,
     data: List[Union[List[float], np.ndarray]],
-    robot_glob_path: str,
     obj_path: str,
     output_video_path: Optional[str] = None,
     headless: Optional[bool] = False,
@@ -77,7 +70,8 @@ def render_by_sapien(
 
     # Camera
     cam = scene.add_camera(name="Cheese!", width=600, height=600, fovy=1, near=0.1, far=10)
-    cam.set_local_pose(sapien.Pose([0.2, -0.45, 0.85], [0.0,0.0,0.0,-1.0]))
+    cam.set_local_pose(sapien.Pose([0.12, 0.12, 0.15], euler_to_quaternion([-pi/4,0.0,0.0])))
+
 
     # Viewer
     if not headless:
@@ -96,6 +90,20 @@ def render_by_sapien(
     filepath = Path(config.urdf_path)
     robot_name = filepath.stem
     loader.load_multiple_collisions_from_file = True
+    # if "ability" in robot_name:
+    #     loader.scale = 1.5
+    # elif "dclaw" in robot_name:
+    #     loader.scale = 1.25
+    # elif "allegro" in robot_name:
+    #     loader.scale = 1.4
+    # elif "shadow" in robot_name:
+    #     loader.scale = 0.9
+    # elif "bhand" in robot_name:
+    #     loader.scale = 1.5
+    # elif "leap" in robot_name:
+    #     loader.scale = 1.4
+    # elif "svh" in robot_name:
+    #     loader.scale = 1.5
 
     if "glb" not in robot_name:
         filepath = str(filepath).replace(".urdf", "_glb.urdf")
@@ -103,20 +111,41 @@ def render_by_sapien(
         filepath = str(filepath)
     robot = loader.load(filepath)
 
+    # if "ability" in robot_name:
+    #     robot.set_pose(sapien.Pose([0, 0, -0.15]))
+    # elif "shadow" in robot_name:
+    #     robot.set_pose(sapien.Pose([0, 0, -0.2]))
+    # elif "dclaw" in robot_name:
+    #     robot.set_pose(sapien.Pose([0, 0, -0.15]))
+    # elif "allegro" in robot_name:
+    #     robot.set_pose(sapien.Pose([0, 0, -0.05]))
+    # elif "bhand" in robot_name:
+    #     robot.set_pose(sapien.Pose([0, 0, -0.2]))
+    # elif "leap" in robot_name:
+    #     robot.set_pose(sapien.Pose([0, 0, -0.15]))
+    # elif "svh" in robot_name:
+    #     robot.set_pose(sapien.Pose([0, 0, -0.13]))
+    # elif "inspire" in robot_name:
+    #     robot.set_pose(sapien.Pose([0, 0, -0.15]))
+
     # Create object
 
     with open(obj_path,"rb") as file:
         obj_data = pickle.load(file)
-        obj_mesh_path = obj_data["mesh_path"]
-        obj_tran_seq = obj_data["tran_seq"] # [N, 3]
-        obj_rot_seq = obj_data["rot_seq"] # [N, 4]
+        initial_pos = obj_data["center"]
+        half_len = obj_data["half_len"]
+        thetas = obj_data["angles"]
+        local_positions = obj_data["local_positions"]
 
-    if (len(data) != len(obj_tran_seq)):
+
+    if (len(data) != len(thetas)):
         raise ValueError("Hand and object length not match!")
-    obj_builder = scene.create_actor_builder()
-    obj_builder.add_convex_collision_from_file(filename=obj_mesh_path)
-    obj_builder.add_visual_from_file(filename=obj_mesh_path)
-    object = obj_builder.build(name="object")
+    initial_theta = 0.0
+    actor_builder = scene.create_actor_builder()
+    actor_builder.add_box_collision(half_size=[half_len,half_len,half_len])
+    actor_builder.add_box_visual(half_size=[half_len,half_len,half_len], material=[1.0, 0.0, 0.0])
+    box = actor_builder.build(name="box")
+    box.set_pose(sapien.Pose(p=initial_pos,q=theta_to_quaternion(initial_theta)))
 
     # Video recorder
     if record_video:
@@ -129,17 +158,19 @@ def render_by_sapien(
     sapien_joint_names = [joint.get_name() for joint in robot.get_active_joints()]
     retargeting_joint_names = meta_data["joint_names"]
     retargeting_to_sapien = np.array([retargeting_joint_names.index(name) for name in sapien_joint_names]).astype(int)
+    
+    key_link_names = ["thtip", "fftip", "mftip", "rftip", "lftip"]
+        
+    # data = np.zeros([2500,20])
+    # for i in range(20):
+    #     data[100*(i+1):100*(i+2)][:,i] = 1.0
+    # thetas = np.zeros([2500,4]) 
 
-    with open(robot_glob_path, "rb") as file:
-        glob_data = pickle.load(file)
-        glob_tran_seq = glob_data["tran_seq"] # [N, 3]
-        glob_rot_seq = glob_data["rot_seq"] # [N, 4]
+    for qpos, theta in tqdm.tqdm(zip(data,thetas)):
 
-    for i in tqdm.trange(len(data)):
-
-        robot.set_pose(sapien.Pose(glob_tran_seq[i],glob_rot_seq[i]))
-        robot.set_qpos(np.array(data[i])[retargeting_to_sapien])
-        object.set_pose(sapien.Pose(obj_tran_seq[i],obj_rot_seq[i]))
+        
+        robot.set_qpos(np.array(qpos)[retargeting_to_sapien])
+        box.set_pose(sapien.Pose(p=initial_pos,q=theta))
         if not headless:
             for _ in range(2):
                 viewer.render()
@@ -150,13 +181,17 @@ def render_by_sapien(
             rgb = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
             writer.write(rgb[..., ::-1])
 
-    # print(glob_tran_seq[i])
-    # print(robot.find_link_by_name("right_hand_base_link").get_entity_pose().get_p())
 
+    # Show acc
+    last_rot = Rotation.from_quat(theta)
+    for link_name, local_pos in zip(key_link_names,local_positions):
+        link_pos = robot.find_link_by_name(link_name).get_entity_pose().get_p()
+        target_pos = last_rot.apply(local_pos) + initial_pos
+        print(f"{link_name}: pos {link_pos} target {target_pos} rel_dist {np.linalg.norm(target_pos-link_pos)/half_len:.2f}")
 
     while not viewer.closed:
         
-        robot.set_qpos(np.array(data[i])[retargeting_to_sapien])
+        robot.set_qpos(np.array(qpos)[retargeting_to_sapien])
 
         if not headless:
             for _ in range(2):
@@ -176,7 +211,6 @@ def render_by_sapien(
 
 def main(
     pickle_path: str,
-    robot_glob_path: str,
     object_path: str,
     output_video_path: Optional[str] = None,
     headless: bool = False
@@ -197,7 +231,7 @@ def main(
     meta_data, data = pickle_data["meta_data"], pickle_data["data"]
 
 
-    render_by_sapien(meta_data, data, robot_glob_path, object_path, output_video_path, headless)
+    render_by_sapien(meta_data, data, object_path, output_video_path, headless)
 
 
 if __name__ == "__main__":

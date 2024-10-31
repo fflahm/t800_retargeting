@@ -5,7 +5,13 @@
 pip install -r requirements.txt
 ```
 
-## retarget from human hand
+## retarget from human hand and visualize without object
+
+```shell
+bash human_to_robot_no_object.sh
+```
+
+## retarget from human hand and visualize with object
 
 ```shell
 bash human_to_robot.sh

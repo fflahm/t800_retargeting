@@ -14,7 +14,7 @@ python retarget_from_joints.py \
   --hand-type right \
   --output-path ${robot_pose_path} \
   --config-tag from_object_
-python render_robot_hand.py \
+python render_robot_hand_box.py \
   --pickle-path ${robot_pose_path} \
   --object-path ${object_pose_path}
   # --output-video-path data/tmp.mp4\
