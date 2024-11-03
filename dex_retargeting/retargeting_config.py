@@ -83,9 +83,11 @@ class RetargetingConfig:
         # Vector retargeting requires: target_origin_link_names + target_task_link_names
         # Position retargeting requires: target_link_names
         if self.type == "vector":
-            
-            self.target_origin_link_names = [svh_link_names[i] for i in self.target_link_human_indices[0]]
-            self.target_task_link_names = [svh_link_names[i] for i in self.target_link_human_indices[1]]
+
+            if self.target_origin_link_names == None:
+                self.target_origin_link_names = [svh_link_names[i] for i in self.target_link_human_indices[0]]
+            if self.target_task_link_names == None:
+                self.target_task_link_names = [svh_link_names[i] for i in self.target_link_human_indices[1]]
 
             if self.target_origin_link_names is None or self.target_task_link_names is None:
                 raise ValueError(f"Vector retargeting requires: target_origin_link_names + target_task_link_names")

@@ -5,7 +5,7 @@ retargeting:
   # Target refers to the retargeting target, which is the robot hand
   target_origin_link_names: [ "palm", "palm", "palm", "palm", "palm", "palm", "palm", "palm", "palm", "palm" ]
   target_task_link_names: [ "thtip", "fftip", "mftip", "rftip", "lftip",  "thmiddle", "ffmiddle", "mfmiddle", "rfmiddle", "lfmiddle" ]
-  scaling_factor: 1.2
+  scaling_factor: [1.0,1.0,1.0]
 
   # Source refers to the retargeting input, which usually corresponds to the human hand
   # The joint indices of human hand joint which corresponds to each link in the target_link_names

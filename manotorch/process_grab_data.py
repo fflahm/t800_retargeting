@@ -9,8 +9,8 @@ import pickle
 from pathlib import Path
 
 object_name = "apple"
-data_path = "data/grab/apple_lift.npz"      # path of original grab data
-beta_path = "data/grab/s1_rhand_betas.npy"  # path of human hand beta
+data_path = "../data/grab/apple_lift.npz"      # path of original grab data
+beta_path = "../data/grab/s1_rhand_betas.npy"  # path of human hand beta
 object_path = Path(__file__).absolute().parent.parent / "assets" / "objects" / "apple.ply" # path of object mesh
 human_joints_save_path = "../data/tmp/human_hand_joints.pkl"
 hand_poses_save_path = "../data/tmp/hand_glob_poses.pkl"
@@ -41,6 +41,10 @@ def load_grab_data(data_path=data_path, beta_path=beta_path, start_num=200, end_
 
     pose_seq = rhand['fullpose'][start_num:end_num] # [N, 45]
     beta = np.load(beta_path) # [10]
+
+    # table_data = data_dict["table"]
+    # print(table_data)
+
 
     object_data = data_dict["object"].item()['params']
     object_tran_seq = object_data["transl"][start_num:end_num] # [N, 3]

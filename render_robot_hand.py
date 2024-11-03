@@ -96,7 +96,7 @@ def render_by_sapien(
     else:
         filepath = str(filepath)
     robot = loader.load(filepath)
-
+    
     # Create object
     obj_dir = "assets/objects"
     with open(obj_path,"rb") as file:
@@ -136,6 +136,7 @@ def render_by_sapien(
         object.set_pose(sapien.Pose(obj_tran_seq[i],obj_rot_seq[i]))
         if not headless:
             for _ in range(2):
+                scene.update_render()
                 viewer.render()
         if record_video:
             scene.update_render()
@@ -146,20 +147,9 @@ def render_by_sapien(
 
     # print(glob_tran_seq[i])
     # print(robot.find_link_by_name("right_hand_base_link").get_entity_pose().get_p())
-
-    while not viewer.closed:
-        
-        robot.set_qpos(np.array(data[i])[retargeting_to_sapien])
-
-        if not headless:
-            for _ in range(2):
-                viewer.render()
-        if record_video:
-            scene.update_render()
-            cam.take_picture()
-            rgb = cam.get_picture("Color")[..., :3]
-            rgb = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
-            writer.write(rgb[..., ::-1])
+    if not headless:
+        while not viewer.closed:
+            viewer.render()
 
     if record_video:
         writer.release()
