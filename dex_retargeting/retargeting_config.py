@@ -21,9 +21,6 @@ svh_link_names = ["right_hand_base_link",
               "right_hand_j", "right_hand_n", "right_hand_r", "rftip",
               "right_hand_i", "right_hand_m", "right_hand_q", "lftip"]
 
-
-
-
 @dataclass
 class RetargetingConfig:
     type: str

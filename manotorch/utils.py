@@ -88,7 +88,10 @@ def generate_mano_outputs(mano_layer:ManoLayer, poses:np.ndarray, beta:np.ndarra
     poses = torch.tensor(poses, dtype=torch.float32) # [N, 48]
     seq_len = len(poses)
     betas = torch.tensor(beta, dtype=torch.float32).expand([seq_len, 10]) # [N, 10]
-    output:MANOOutput = mano_layer(poses, betas)
-    verts_seq = output.verts.numpy()
-    joints_seq = output.joints.numpy()
+    # output:MANOOutput = mano_layer(poses, betas)
+    # verts_seq = output.verts.numpy()
+    # joints_seq = output.joints.numpy()
+    verts_seq, joints_seq = mano_layer(poses, betas)
+    verts_seq = verts_seq.numpy()
+    joints_seq = joints_seq.numpy()
     return verts_seq, joints_seq

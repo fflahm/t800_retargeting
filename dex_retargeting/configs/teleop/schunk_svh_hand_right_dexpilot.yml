@@ -8,7 +8,7 @@ retargeting:
                         'right_hand_Ring_Finger', 'right_hand_Middle_Finger_Proximal', 'right_hand_Middle_Finger_Distal' ]
   wrist_link_name: "right_hand_base_link"
   finger_tip_link_names: [ "thtip", "fftip", "mftip", "rftip", "lftip" ]
-  scaling_factor: 1.2
+  scaling_factor: [1.0,1.0,1.0]
 
   # A smaller alpha means stronger filtering, i.e. more smooth but also larger latency
   low_pass_alpha: 0.2

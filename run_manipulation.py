@@ -10,7 +10,6 @@ import pickle
 from sapien.asset import create_dome_envmap
 from sapien.utils import Viewer
 
-
 from dex_retargeting.retargeting_config import RetargetingConfig
 from scipy.spatial.transform import Rotation
 
@@ -21,15 +20,37 @@ from scipy.spatial.transform import Rotation
 np.set_printoptions(precision=3)
 pi = np.pi
 
+mesh_dir = "grab/tools/object_meshes/contact_meshes"
+fric = 0.5
+resti = 0.0
+robot_dens = 1000.0
+object_dens = 400.0
+stiff = 1000.0
+damp = 50.0
+scaling = 1.0
+timestep = 1 / 120.0
+interval = 1
+if_create_object = False
+if_pure_visual = False
+if_show_markers = True
+if_show_dists = True
+if_align_root = True
+
+def get_link_positions_from_names(robot, link_names):
+    positions = []
+    for name in link_names:
+        positions.append(robot.find_link_by_name(name).get_entity_pose().get_p())
+    return positions
+
 def render_by_sapien(
     meta_data: Dict,
     data: List[Union[List[float], np.ndarray]],
-    robot_glob_path: str,
-    obj_path: str,
+    robot_glob_data: Dict,
+    obj_data: Dict,
+    table_data: Dict,
     output_video_path: Optional[str] = None,
     headless: Optional[bool] = False,
 ):  
-
     # Generate rendering config
     use_rt = headless
     if not use_rt:
@@ -48,7 +69,8 @@ def render_by_sapien(
 
     # Setup
     scene = sapien.Scene()
-    scene.set_timestep(1 / 2000.0)
+    scene.set_timestep(timestep)
+    sapien.physx.set_default_material(fric, fric, resti)
 
     # Ground
     render_mat = sapien.render.RenderMaterial()
@@ -56,12 +78,21 @@ def render_by_sapien(
     render_mat.metallic = 0.0
     render_mat.roughness = 0.9
     render_mat.specular = 0.8
-    physx_mat: sapien.physx.PhysxMaterial = sapien.physx.PhysxMaterial(
-        static_friction=0.5,
-        dynamic_friction=0.5,
-        restitution=0.0,
-    )
-    scene.add_ground(0.790,  render_material=render_mat, render_half_size=[1000, 1000])
+    # physx_mat: sapien.physx.PhysxMaterial = sapien.physx.PhysxMaterial(
+    #     static_friction=0.5,
+    #     dynamic_friction=0.5,
+    #     restitution=0.0,
+    # )
+
+    table_mesh_path = f"{mesh_dir}/table.ply"
+    table_tran = table_data["loc"]
+    table_rot = table_data["rot"]
+    table_builder = scene.create_actor_builder()
+    table_builder.add_convex_collision_from_file(filename=table_mesh_path)
+    table_builder.add_visual_from_file(filename=table_mesh_path, material=render_mat)
+    table = table_builder.build_kinematic("table")
+    table.set_pose(sapien.Pose(table_tran, table_rot))
+    # scene.add_ground(table_height,  render_material=render_mat, render_half_size=[1000, 1000])
 
     # Lighting
     scene.add_directional_light(np.array([1, 1, -1]), np.array([3, 3, 3]))
@@ -72,7 +103,8 @@ def render_by_sapien(
     
     # Camera
     cam = scene.add_camera(name="Cheese!", width=600, height=600, fovy=1, near=0.1, far=10)
-    cam.set_local_pose(sapien.Pose([0.2, -0.45, 0.85], [0.0,0.0,0.0,-1.0]))
+    # cam.set_local_pose(sapien.Pose([0.2, -0.45, 0.85], [0.0,0.0,0.0,-1.0]))
+    cam.set_local_pose(sapien.Pose([0.4, -0.5, 0.85], [0.0,0.0,0.0,-1.0]))
 
     # Viewer
     if not headless:
@@ -92,34 +124,43 @@ def render_by_sapien(
     robot_name = filepath.stem
     loader.load_multiple_collisions_from_file = True
     loader.fix_root_link = True
-    loader.scale = 1.0
+    loader.scale = scaling
+    loader.set_density(robot_dens)
     
     if "glb" not in robot_name:
         filepath = str(filepath).replace(".urdf", "_glb.urdf")
     else:
         filepath = str(filepath)
     robot = loader.load(filepath)
+    
+    for link in robot.links:
+        link.disable_gravity = True
 
     # for link in robot.links:
-    #     link.disable_gravity = True 
+    #     frics = []
+    #     for ent in link.collision_shapes:
+    #         frics.append(ent.density)
+    #     print(link.name, frics)
 
     
     # Create object
-    obj_dir = "assets/objects"
-    with open(obj_path,"rb") as file:
-        obj_data = pickle.load(file)
+    if if_create_object:
         obj_name = obj_data["name"]
-        obj_mesh_path = f"{obj_dir}/{obj_name}.ply"
-        obj_tran_seq = obj_data["tran_seq"] # [N, 3]
-        obj_rot_seq = obj_data["rot_seq"] # [N, 4]
-    if (len(data) != len(obj_tran_seq)):
-        raise ValueError("Hand and object length not match!")
+        obj_mesh_path = f"{mesh_dir}/{obj_name}.ply"
+        obj_tran_seq = obj_data["loc"] # [N, 3]
+        obj_rot_seq = obj_data["rot"] # [N, 4]
 
-    obj_builder = scene.create_actor_builder()
-    obj_builder.add_convex_collision_from_file(filename=obj_mesh_path,material=physx_mat)
-    obj_builder.add_visual_from_file(filename=obj_mesh_path)
-    object = obj_builder.build(name="object")
-    object.set_pose(sapien.Pose(obj_tran_seq[0],obj_rot_seq[0]))
+        if (len(data) != len(obj_tran_seq)):
+            raise ValueError("Hand and object length not match!")
+
+        obj_builder = scene.create_actor_builder()
+        obj_builder.add_convex_collision_from_file(filename=obj_mesh_path, density=object_dens)
+        obj_builder.add_visual_from_file(filename=obj_mesh_path)
+    
+        object = obj_builder.build(name="object")
+        
+    # physx_obj:sapien.pysapien.physx.PhysxRigidDynamicComponent = object.components[1]
+    # print(physx_obj.collision_shapes[0].physical_material.restitution)
 
     # Video recorder
     if record_video:
@@ -134,58 +175,91 @@ def render_by_sapien(
     retargeting_to_sapien = np.array([retargeting_joint_names.index(name) for name in sapien_joint_names]).astype(int)
     
 
-    with open(robot_glob_path, "rb") as file:
-        glob_data = pickle.load(file)
-        glob_tran_seq = glob_data["tran_seq"] # [N, 3]
-        glob_rot_seq = glob_data["rot_seq"] # [N, 4]
-        qpos_seq = np.array(data)[:,retargeting_to_sapien]
-    robot.set_root_pose(sapien.Pose(glob_tran_seq[0],glob_rot_seq[0]))
-    # zero_qpos = robot.get_qpos()
-    robot.set_qpos(qpos_seq[0])
+    link_names = config.target_task_link_names
+    human_indices = config.target_link_human_indices[1]
 
+    glob_tran_seq = robot_glob_data["wrist_loc"] # [N, 3]
+    glob_rot_seq = robot_glob_data["wrist_rot"] # [N, 4]
+    qpos_seq = np.array(data)[:,retargeting_to_sapien]
+    target_positions_seq = robot_glob_data["joints_target"] # [N, 21, 3]
+    target_positions_seq = target_positions_seq[:,human_indices,:] # [N, 5, 3]
+    
+    markers = []
+    if if_show_markers:
+        for link_name in link_names:
+            marker_builder = scene.create_actor_builder()
+            marker_builder.add_sphere_visual(radius=0.005)
+            markers.append(marker_builder.build_kinematic(name=f"target_{link_name}"))
+
+        marker_builder = scene.create_actor_builder()
+        marker_builder.add_sphere_visual(radius=0.005)
+        # bottom = marker_builder.build_kinematic(name="bottom")
+        # bottom.set_pose(sapien.Pose([ 0.20784388,-0.5304037,0.7901369 ]))
+        # bottom.set_pose(sapien.Pose([ 0.02140963,-0.51311964,0.7516789 ]))
+    
     active_joints = robot.get_active_joints()
+    
     for joint_idx, joint in enumerate(active_joints):
-        joint.set_drive_property(stiffness=20, damping=5, force_limit=1000)
+        joint.set_drive_property(stiffness=stiff, damping=damp)# , mode="force")
 
-    for i in tqdm.trange(len(data)):
-
-        robot.set_root_pose(sapien.Pose(glob_tran_seq[i],glob_rot_seq[i]))
-        robot.set_qpos(qpos_seq[i])
-        # robot.set_qpos(qpos_seq[i])
-        # qf = robot.compute_passive_force(
-        #     gravity=True,
-        #     coriolis_and_centrifugal=True,
-        # )
-        # robot.set_qf(qf)
-        # for joint_idx, joint in enumerate(active_joints):
-        #     joint.set_drive_target(qpos_seq[0][joint_idx])
+    while True:
+        link_positions_seq = []
+        if if_align_root:
+            robot.set_root_pose(sapien.Pose(table_tran))
+        else:
+            robot.set_root_pose(sapien.Pose(glob_tran_seq[0],glob_rot_seq[0]))
+        robot.set_qpos(qpos_seq[0])
+        if if_create_object:
+            object.set_pose(sapien.Pose(obj_tran_seq[0],obj_rot_seq[0]))
+            # object.set_pose(sapien.Pose(obj_tran_seq[0],[0.70738827, 0.0, 0.0, -0.70682518]))
+        if if_show_markers:
+            for j in range(len(markers)):
+                markers[j].set_pose(sapien.Pose(target_positions_seq[0][j]))
         if not headless:
-            for _ in range(2):
-                scene.step()
+            pause = True
+            while not viewer.closed and pause:
+                if viewer.window.key_down('c'):
+                    pause = False
                 scene.update_render()
                 viewer.render()
-        if record_video:
-            scene.step()
-            scene.update_render()
-            cam.take_picture()
-            rgb = cam.get_picture("Color")[..., :3]
-            rgb = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
-            writer.write(rgb[..., ::-1])
+        for i in tqdm.trange(len(data)):
+            if not if_align_root:
+                robot.set_root_pose(sapien.Pose(glob_tran_seq[i],glob_rot_seq[i]))
+            if if_pure_visual:
+                robot.set_qpos(qpos_seq[i])
+                if if_create_object:
+                    object.set_pose(sapien.Pose(obj_tran_seq[i],obj_rot_seq[i]))
+            qf = robot.compute_passive_force()
+            robot.set_qf(qf)
+            for joint_idx, joint in enumerate(active_joints):
+                joint.set_drive_target(qpos_seq[i][joint_idx])
 
-    # print(glob_tran_seq[i])
-    # print(robot.find_link_by_name("base_link").get_entity_pose().get_p())
-    # print(robot.find_link_by_name("wrist").get_entity_pose().get_p())
-
-    if not headless:
-        while not viewer.closed:
+            if if_show_markers:
+                for j in range(len(markers)):
+                    markers[j].set_pose(sapien.Pose(target_positions_seq[i][j]))
             
-            # for joint_idx, joint in enumerate(active_joints):
-            #     joint.set_drive_target(qpos_seq[0][joint_idx])
-            robot.set_qpos(qpos_seq[i])
-            scene.step()
-            scene.update_render()
-            viewer.render()
+            for _ in range(interval):
+                if not if_pure_visual:
+                    scene.step()
+                scene.update_render()
+                if not headless:
+                    viewer.render()
+                if record_video:
+                    cam.take_picture()
+                    rgb = cam.get_picture("Color")[..., :3]
+                    rgb = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
+                    writer.write(rgb[..., ::-1])
+            if if_show_dists:
+                link_positions_seq.append(get_link_positions_from_names(robot,link_names))
 
+        if if_show_dists:
+            link_positions_seq = np.array(link_positions_seq) # [N, 6, 3]
+            dists = np.linalg.norm(target_positions_seq-link_positions_seq,axis=2)
+            dists = np.mean(dists, axis=0)
+            print(f"distances: {dists}")
+        
+        if record_video:
+            break
 
     if record_video:
         writer.release()
@@ -194,9 +268,9 @@ def render_by_sapien(
 
 
 def main(
-    pickle_path: str,
-    robot_glob_path: str,
-    object_path: str,
+    pickle_path: str = "data/apple/svh_hand_poses.pkl",
+    robot_glob_path:str = "data/apple/hand_glob_poses.pkl",
+    object_path: str = "data/apple/object_poses.pkl",
     output_video_path: Optional[str] = None,
     headless: bool = False
 ):
@@ -213,10 +287,11 @@ def main(
     RetargetingConfig.set_default_urdf_dir(str(robot_dir))
 
     pickle_data = np.load(pickle_path, allow_pickle=True)
-    meta_data, data = pickle_data["meta_data"], pickle_data["data"]
-
-
-    render_by_sapien(meta_data, data, robot_glob_path, object_path, output_video_path, headless)
+    meta_data, robot_data = pickle_data["robot"]["meta_data"], pickle_data["robot"]["data"]
+    robot_glob_data = pickle_data["hand"]
+    object_data = pickle_data["object"]
+    table_data = pickle_data["table"]
+    render_by_sapien(meta_data, robot_data, robot_glob_data, object_data, table_data, output_video_path, headless)
 
 
 if __name__ == "__main__":

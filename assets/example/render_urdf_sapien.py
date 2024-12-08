@@ -14,7 +14,7 @@ COLOR_MAP = matplotlib.colormaps["Reds"]
 
 def parse_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument("urdf", type=str, help="Path to the URDF file.")
+    parser.add_argument("--urdf", default="robots/hands/ability_hand/ability_hand_right.urdf", type=str, help="Path to the URDF file.")
     parser.add_argument(
         "-rt", "--use_rt", action="store_true", default=False, help="Whether to use ray tracing for rendering."
     )
@@ -251,7 +251,7 @@ def visualize_urdf(use_rt, urdf_file, simulate, disable_self_collision, fix_root
     # Setup
     scene = sapien.Scene()
     sapien.physx.set_scene_config(enable_tgs=True)
-    scene.set_timestep(1 / 125)
+    scene.set_timestep(1 / 125.0)
 
     # Ground
     render_mat = sapien.render.RenderMaterial()
@@ -269,7 +269,8 @@ def visualize_urdf(use_rt, urdf_file, simulate, disable_self_collision, fix_root
     scene.add_point_light(np.array([2, -2, 2]), np.array([1, 1, 1]), shadow=False)
 
     # Viewer
-    viewer = ContactViewer()
+    # viewer = ContactViewer()
+    viewer = Viewer()
     viewer.set_scene(scene)
     viewer.control_window.set_camera_xyz(0.5, 0, 0.5)
     viewer.control_window.set_camera_rpy(0, -0.8, 3.14)
@@ -318,7 +319,7 @@ def visualize_urdf(use_rt, urdf_file, simulate, disable_self_collision, fix_root
             # Draw the contact information on the viewer
             # We are using the "Reds" colormap to indicate the magnitude of the contact force
             # Stronger red hue means larger contact force
-            viewer.draw_contact()
+            # viewer.draw_contact()
 
 
 def main():

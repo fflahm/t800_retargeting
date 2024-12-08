@@ -10,11 +10,12 @@ from dex_retargeting.retargeting_config import RetargetingConfig
 from dex_retargeting.seq_retarget import SeqRetargeting
 
 
-def retarget_video(retargeting: SeqRetargeting, input_path: str, output_path: str, config_path: str, pre_freq=1, post_freq=1):
+def retarget_video(retargeting: SeqRetargeting, input_path: str, config_path: str, pre_freq=1, post_freq=1):
     data = []
 
     with open(input_path,"rb") as file:
-        joints_pos = pickle.load(file)
+        input_data = pickle.load(file)
+        joints_pos = input_data["hand"]["joints_to_retarget"]
 
     joints_pos = joints_pos[::pre_freq]
     length = len(joints_pos)
@@ -42,17 +43,20 @@ def retarget_video(retargeting: SeqRetargeting, input_path: str, output_path: st
             joint_names=retargeting.optimizer.robot.dof_joint_names,
         )
 
-        
-        output_path = Path(output_path)
-        output_path.parent.mkdir(parents=True, exist_ok=True)
-        with output_path.open("wb") as f:
-            pickle.dump(dict(data=data, meta_data=meta_data), f)
+        with open(input_path, "wb") as file:
+            input_data["robot"] = {"data": data, "meta_data": meta_data}
+            pickle.dump(input_data, file)
+        # output_path = Path(output_path)
+        # output_path.parent.mkdir(parents=True, exist_ok=True)
+        # with output_path.open("wb") as f:
+        #     pickle.dump(dict(data=data, meta_data=meta_data), f)
 
         retargeting.verbose()
 
 
 def main(
-    robot_name: RobotName, input_path: str, output_path: str, retargeting_type: RetargetingType, 
+    robot_name: RobotName, input_path: str, # output_path: str, 
+    retargeting_type: RetargetingType, 
     hand_type: HandType, config_tag: str="", pre_freq:int=1, post_freq:int=1
 ):
     """
@@ -72,7 +76,7 @@ def main(
     robot_dir = "assets/robots/hands"
     RetargetingConfig.set_default_urdf_dir(str(robot_dir))
     retargeting = RetargetingConfig.load_from_file(config_path).build()
-    retarget_video(retargeting, input_path, output_path, str(config_path),pre_freq,post_freq)
+    retarget_video(retargeting, input_path, str(config_path), pre_freq,post_freq)
 
 
 if __name__ == "__main__":

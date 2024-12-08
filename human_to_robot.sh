@@ -1,13 +1,12 @@
-name="ability"
-python retarget_from_joints.py \
+name="shadow"
+filename="watch_set_1.pkl"
+python3 retarget_from_joints.py \
   --robot-name $name \
-  --input-path data/grab/human_hand_joints.pkl \
+  --input-path data/grab/s1/${filename} \
   --retargeting-type vector \
   --hand-type right \
-  --output-path data/qpos/${name}_hand_poses.pkl \
-  # --config-tag from_human_ \
 
-python3 render_robot_hand.py \
-  --pickle-path data/qpos/${name}_hand_poses.pkl \
-  --robot-glob-path data/grab/hand_glob_poses.pkl \
-  --object-path data/grab/object_poses.pkl
+python3 run_manipulation.py \
+  --pickle-path data/grab/s1/${filename} \
+  # --output-video-path data/demo.mp4 \
+  # --headless

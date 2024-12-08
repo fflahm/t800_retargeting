@@ -28,3 +28,21 @@ bash human_to_robot.sh
 ```shell
 bash object_to_robot.sh
 ```
+
+## structure of .pkl
+
+- robot
+  - data: (N, dof) robot hand joints angles retargeted
+  - meta_data
+- hand
+  - joints_to_retarget: (N, 21, 3) mano joints positions aligned
+  - joints_target: (N, 21, 3) mano joints positions original
+  - wrist_loc: (N, 3) wrist positions
+  - wrist_rot: (N, 4) wrist rotations in wxyz
+- object
+  - name
+  - loc
+  - rot
+- table
+  - loc
+  - rot

@@ -17,14 +17,20 @@ from scipy.spatial.transform import Rotation
 # Convert webp
 # ffmpeg -i teaser.mp4 -vcodec libwebp -lossless 1 -loop 0 -preset default  -an -vsync 0 teaser.webp
 
-def process_rotations(origin_quat):
-    origin_rot = Rotation.from_rotvec(origin_quat)
-    trans_rot = Rotation.from_quat([0.5,-0.5,-0.5,0.5])
-    target_quat = (origin_rot*trans_rot).as_quat() # [x, y, z, w]
-    return target_quat[[3,0,1,2]]
+# def process_rotations(origin_quat):
+#     origin_rot = Rotation.from_rotvec(origin_quat)
+#     trans_rot = Rotation.from_quat([0.5,-0.5,-0.5,0.5])
+#     target_quat = (origin_rot*trans_rot).as_quat() # [x, y, z, w]
+#     return target_quat[[3,0,1,2]]
 
 np.set_printoptions(precision=3)
 pi = np.pi
+
+def get_link_positions_from_names(robot, link_names):
+    positions = []
+    for name in link_names:
+        positions.append(robot.find_link_by_name(name).get_entity_pose().get_p())
+    return positions
 
 def render_by_sapien(
     meta_data: Dict,
@@ -112,6 +118,9 @@ def render_by_sapien(
     obj_builder.add_visual_from_file(filename=obj_mesh_path)
     object = obj_builder.build(name="object")
 
+    # for joint in robot.get_active_joints():
+    #     print(joint.name)
+
     # Video recorder
     if record_video:
         Path(output_video_path).parent.mkdir(parents=True, exist_ok=True)
@@ -123,19 +132,34 @@ def render_by_sapien(
     sapien_joint_names = [joint.get_name() for joint in robot.get_active_joints()]
     retargeting_joint_names = meta_data["joint_names"]
     retargeting_to_sapien = np.array([retargeting_joint_names.index(name) for name in sapien_joint_names]).astype(int)
-
+    
     with open(robot_glob_path, "rb") as file:
         glob_data = pickle.load(file)
         glob_tran_seq = glob_data["tran_seq"] # [N, 3]
         glob_rot_seq = glob_data["rot_seq"] # [N, 4]
-
+        target_positions_seq = glob_data["joints_seq"] # [N, 21, 3]
+        target_positions_seq = target_positions_seq[:,[0,4,8,12,16,20],:] # [N, 6, 3]
+    
+    link_names = ["base_link","thumb_tip","index_tip","middle_tip","ring_tip","pinky_tip"]
+    markers = []
+    for i in range(len(link_names)):
+        marker_builder = scene.create_actor_builder()
+        marker_builder.add_sphere_visual(radius=0.005)
+        markers.append(marker_builder.build(name=str(i)))
+    def invert_quat(quat):
+        return [quat[0], -quat[1], -quat[2], -quat[3]]
+    
+    link_positions_seq = []
     for i in tqdm.trange(len(data)):
 
         robot.set_pose(sapien.Pose(glob_tran_seq[i],glob_rot_seq[i]))
         robot.set_qpos(np.array(data[i])[retargeting_to_sapien])
-        object.set_pose(sapien.Pose(obj_tran_seq[i],obj_rot_seq[i]))
+        object.set_pose(sapien.Pose(obj_tran_seq[i],invert_quat(obj_rot_seq[i])))
+        for j in range(len(markers)):
+            markers[j].set_pose(sapien.Pose(target_positions_seq[i][j]))
+        # link_positions_seq.append(get_link_positions_from_names(robot,link_names))
         if not headless:
-            for _ in range(2):
+            for _ in range(5):
                 scene.update_render()
                 viewer.render()
         if record_video:
@@ -144,9 +168,12 @@ def render_by_sapien(
             rgb = cam.get_picture("Color")[..., :3]
             rgb = (np.clip(rgb, 0, 1) * 255).astype(np.uint8)
             writer.write(rgb[..., ::-1])
+    # link_positions_seq = np.array(link_positions_seq) # [N, 6, 3]
+    # dists = np.linalg.norm(target_positions_seq-link_positions_seq,axis=2)
+    # dists = np.mean(dists, axis=0)
+    # print(f"distances: {dists}")
 
-    # print(glob_tran_seq[i])
-    # print(robot.find_link_by_name("right_hand_base_link").get_entity_pose().get_p())
+
     if not headless:
         while not viewer.closed:
             viewer.render()

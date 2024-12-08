@@ -20,7 +20,8 @@ retargeting:
   # target_link_human_indices: [ [ 0,0,0,0,0, 1,5,9,13,17, 2,6,10,14,18, 3,7,11,15,19 ], 
   #                              [ 1,5,9,13,17, 2,6,10,14,18, 3,7,11,15,19, 4,8,12,16,20 ] ]
 
-  target_link_human_indices: [[0,0,0,0,0, 2,6,10,14,18], [2,6,10,14,18, 4,8,12,16,20]]
+  # target_link_human_indices: [[0,0,0,0,0, 2,6,10,14,18], [2,6,10,14,18, 4,8,12,16,20]]
+  target_link_human_indices: [[0,0,0,0,0], [4,8,12,16,20]]
   # A smaller alpha means stronger filtering, i.e. more smooth but also larger latency
   low_pass_alpha: 0.5
   ignore_mimic_joint: True

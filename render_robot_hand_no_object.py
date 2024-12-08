@@ -142,6 +142,7 @@ def render_by_sapien(
     #     data[100*(i+1):100*(i+2)][:,i] = 1.0
     # thetas = np.zeros([2500,4]) 
 
+
     for qpos in tqdm.tqdm(data):
         robot.set_qpos(np.array(qpos)[retargeting_to_sapien])
         if not headless:
